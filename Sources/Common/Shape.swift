@@ -8,22 +8,6 @@
 
 import Cocoa
 
-extension Shape: NSCopying {
-    public func copy(with zone: NSZone? = nil) -> Any {
-        let item = type(of: self).init()
-        item.layout = layout
-        item.rotationAngle = rotationAngle
-        item.rotationAnchor = rotationAnchor
-        item.strokeColor = strokeColor
-        item.fillColor = fillColor
-        item.lineWidth = lineWidth
-        item.isSelected = isSelected
-        item.isFinished = isFinished
-        item.update()
-        return item
-    }
-}
-
 extension Shape {
     
     public struct PointRelation {
@@ -78,7 +62,7 @@ extension Shape {
     
 }
 
-open class Shape: NSObject, Codable {
+open class Shape: NSObject, NSCopying, Codable {
     
     open var structure: [Drawable] = []
     open var body: [Drawable] = []
@@ -149,19 +133,22 @@ open class Shape: NSObject, Codable {
     
     open func update() {
         updateStructure()
-        updateBody()
+        if canFinish {
+            updateBody()
+        }
         updateHandler?()
     }
     
-    /// Must call `super`.
+    /// Update your variables for later use in `updateStructure()` or `updateBody()` if needed.
     open func didUpdateLayout() {
-        update()
+        
     }
     
     open func push(_ point: CGPoint) {
         guard !isFinished else { return }
         layout.push(point)
         didUpdateLayout()
+        update()
     }
     
     open func update(_ point: CGPoint, at indexPath: IndexPath) {
@@ -182,6 +169,7 @@ open class Shape: NSObject, Codable {
             }
         }
         didUpdateLayout()
+        update()
     }
     
     open func updateLast(_ point: CGPoint) {
@@ -202,6 +190,7 @@ open class Shape: NSObject, Codable {
             }
         }
         didUpdateLayout()
+        update()
     }
     
     open func scale(x: CGFloat, y: CGFloat) {
@@ -215,6 +204,7 @@ open class Shape: NSObject, Codable {
             layout[indexPath] = newPoint
         }
         didUpdateLayout()
+        update()
     }
     
     open func anchor(at anchor: Anchor) {
@@ -233,6 +223,7 @@ open class Shape: NSObject, Codable {
         }
         rotationAngle = angle
         didUpdateLayout()
+        update()
     }
     
     open func markAsFinished() {
@@ -325,6 +316,24 @@ open class Shape: NSObject, Codable {
         super.init()
         markAsFinished()
         didUpdateLayout()
+        update()
+    }
+    
+    // MARK: - NSCopying
+    
+    public func copy(with zone: NSZone? = nil) -> Any {
+        let item = type(of: self).init()
+        item.layout = layout
+        item.rotationAngle = rotationAngle
+        item.rotationAnchor = rotationAnchor
+        item.strokeColor = strokeColor
+        item.fillColor = fillColor
+        item.lineWidth = lineWidth
+        item.isSelected = isSelected
+        item.isFinished = isFinished
+        didUpdateLayout()
+        item.update()
+        return item
     }
     
 }

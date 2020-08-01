@@ -9,7 +9,7 @@
 import Cocoa
 
 @objc public protocol CanvasViewDelegate: AnyObject {
-    // Session
+    // Drawing Session
     @objc optional func canvasView(_ canvasView: CanvasView, didFinishSession item: Shape)
     @objc optional func canvasViewDidCancelSession(_ canvasView: CanvasView)
     // Selection
@@ -18,7 +18,8 @@ import Cocoa
     // Modification
     @objc optional func canvasView(_ canvasView: CanvasView, didEdit item: Shape, at indexPath: IndexPath)
     @objc optional func canvasView(_ canvasView: CanvasView, didMove item: Shape)
-    
+    @objc optional func canvasView(_ canvasView: CanvasView, didRotate item: Shape)
+    // Menu
     @objc optional func menu(for canvasView: CanvasView) -> NSMenu?
     @objc optional func canvasView(_ canvasView: CanvasView, menuFor item: Shape) -> NSMenu?
 }
@@ -39,16 +40,18 @@ extension CanvasView {
         case idle
         case select(CGRect)
         case drawing(Shape)
+        
         case onRotationAnchor(Shape)
         case movingRotationAnchor(Shape)
+        
         case onRotator(Shape)
         case movingRotator(Shape)
+        
         case onItem(Shape, CGPoint)
         case movingItem(Shape, CGPoint)
+        
         case onPoint(Shape, IndexPath)
         case movingPoint(Shape, IndexPath)
-        case onControlPoint(Shape, Shape)
-        case movingControlPoint(Shape, Shape)
         
         var onRotator: Bool {
             guard case .onRotator = self else { return false }
@@ -79,6 +82,7 @@ extension CanvasView {
     
 }
 
+@IBDesignable
 public final class CanvasView: NSView {
     
     // MARK: - Life Cycle
@@ -96,6 +100,8 @@ public final class CanvasView: NSView {
     public var singleSelection: Shape? { selectedItems.count == 1 ? selectedItems.first : nil }
     
     // MARK: - Settings
+    
+    @IBInspectable public var pointImage: NSImage?
     
     public var contentSize: ContentSize = .auto {
         didSet {
@@ -185,7 +191,6 @@ public final class CanvasView: NSView {
             if isMagnetEnabled {
                 drawMagnetPoints(for: item, in: ctx)
             }
-//        case .onPoint(let item, let indexPath): fallthrough
         case .movingPoint(let item, let indexPath):
             if isAuxToolEnabled && item.supportsAuxTool {
                 drawAuxTool(for: item, with: indexPath, connected: true, in: ctx)
@@ -290,6 +295,7 @@ public final class CanvasView: NSView {
             let radians = Line(from: center, to: location).angle
             item.rotate(radians)
             state = .movingRotator(item)
+            delegate?.canvasView?(self, didRotate: item)
             
         case .onRotationAnchor(let item): fallthrough
         case .movingRotationAnchor(let item):
@@ -387,28 +393,15 @@ public final class CanvasView: NSView {
         }
     }
     
-    private func updateContentSize(_ contentSize: ContentSize) {
-        
-    }
-    
-    private func convertPoint(_ point: CGPoint) -> CGPoint {
-        switch contentSize {
-        case .auto:
-            return point
-        case .fixed(let size):
-            return CGPoint(x: point.x * size.width / bounds.width,
-                           y: point.y * size.height / bounds.height)
-        }
-    }
-    
     public func finishSession() {
         guard case .drawing(let item) = state else { return }
-        if addItem(item) {
+        let result = addItem(item)
+        state = .idle
+        if result {
             delegate?.canvasView?(self, didFinishSession: item)
         } else {
             delegate?.canvasViewDidCancelSession?(self)
         }
-        state = .idle
         refresh()
     }
     

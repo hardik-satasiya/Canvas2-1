@@ -32,16 +32,12 @@ extension CGRect {
     }
     
     public func canSelect(_ line: Line) -> Bool {
-        let line1 = Line(from: CGPoint(x: minX, y: minY), to: CGPoint(x: minX, y: maxY))
-        let line2 = Line(from: CGPoint(x: maxX, y: minY), to: CGPoint(x: maxX, y: maxY))
-        let line3 = Line(from: CGPoint(x: minX, y: minY), to: CGPoint(x: maxX, y: minY))
-        let line4 = Line(from: CGPoint(x: minX, y: maxY), to: CGPoint(x: maxX, y: maxY))
-        return contains(line.from)
-            || contains(line.to)
-            || line.collides(with: line1)
-            || line.collides(with: line2)
-            || line.collides(with: line3)
-            || line.collides(with: line4)
+        contains(line.mid) || [
+            Line(from: CGPoint(x: minX, y: minY), to: CGPoint(x: minX, y: maxY)),
+            Line(from: CGPoint(x: maxX, y: minY), to: CGPoint(x: maxX, y: maxY)),
+            Line(from: CGPoint(x: minX, y: minY), to: CGPoint(x: maxX, y: minY)),
+            Line(from: CGPoint(x: minX, y: maxY), to: CGPoint(x: maxX, y: maxY)),
+        ].contains { line.collides(with: $0) }
     }
     
     public func canSelect(_ circle: Circle) -> Bool {

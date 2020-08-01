@@ -49,16 +49,12 @@ class ViewController: NSViewController {
         selectableSwitch.state = canvasView.isSelectable ? .on : .off
         rotationSwitch.state = canvasView.isRotationEnabled ? .on : .off
         magnetSwitch.state = canvasView.isMagnetEnabled ? .on : .off
-        if let item = canvasView.singleSelection {
-            colorWell.color = item.strokeColor
-            if let polygon = item as? PolygonShape {
-                closeSwitch.isHidden = false
-                closeSwitch.state = polygon.isClosed ? .on : .off
-            } else {
-                closeSwitch.isHidden = true
-            }
+        colorWell.color = canvasView.singleSelection?.strokeColor ?? canvasView.strokeColor
+        
+        if let polygon = (canvasView.singleSelection ?? canvasView.currentItem) as? PolygonShape {
+            closeSwitch.state = polygon.isClosed ? .on : .off
+            closeSwitch.isHidden = false
         } else {
-            colorWell.color = canvasView.strokeColor
             closeSwitch.isHidden = true
         }
     }
@@ -68,6 +64,7 @@ class ViewController: NSViewController {
         let shape = ShapeList.allCases[sender.selectedRow]
         canvasView.startSession(shape.convert())
         sender.deselectAll(nil)
+        updateUI()
     }
 
     @IBAction func pointStyleListButtonAction(_ sender: NSPopUpButton) {
@@ -95,7 +92,9 @@ class ViewController: NSViewController {
     }
     
     @IBAction func closeSwitchAction(_ sender: NSButton) {
-        guard let polygon = canvasView.singleSelection as? PolygonShape else { return }
+        guard let polygon = (canvasView.singleSelection ?? canvasView.currentItem) as? PolygonShape else {
+            return
+        }
         polygon.isClosed = sender.state == .on
     }
     
@@ -114,6 +113,10 @@ class ViewController: NSViewController {
 }
 
 extension ViewController: CanvasViewDelegate {
+    
+    func canvasView(_ canvasView: CanvasView, didFinishSession item: Shape) {
+        updateUI()
+    }
     
     func canvasView(_ canvasView: CanvasView, didSelect items: [Shape]) {
         updateUI()

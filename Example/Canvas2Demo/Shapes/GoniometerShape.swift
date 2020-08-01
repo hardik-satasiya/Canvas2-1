@@ -11,9 +11,6 @@ import Canvas2
 
 public class GoniometerShape: Shape, Magnetizable {
     
-    public var isFilled: Bool = false {
-        didSet { update() }
-    }
     public private(set) var arc: Arc?
     public override var canFinish: Bool { layout.first?.count == 3 }
     public override var finishManually: Bool { false }
@@ -75,11 +72,6 @@ public class GoniometerShape: Shape, Magnetizable {
                     let p2 = arc.center.extended(length: arc.radius - len, angle: startAngle + angle)
                     path.addLines(between: [p1, p2])
                 }
-            },
-            ShapePath(method: .fill, color: isFilled ? fillColor : .clear) { path in
-                path.addArc(arc)
-                path.addLine(to: arc.center)
-                path.closeSubpath()
             },
         ]
     }

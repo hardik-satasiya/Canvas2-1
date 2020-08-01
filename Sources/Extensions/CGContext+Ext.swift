@@ -59,17 +59,6 @@ extension CGContext {
         ])
     }
     
-    public func addRotator(center: CGPoint, radius: CGFloat, angle: CGFloat) {
-        let start = angle - .pi / 4
-        let end = angle + .pi / 4
-        let arrowLen: CGFloat = 6
-        addArc(center: center, radius: radius,
-               startAngle: start, endAngle: end,
-               clockwise: false)
-        addArrow(body: 0, head: arrowLen, angle: angle + .pi / 1.4,
-                 at: center.extended(length: radius, angle: end))
-    }
-    
     public static func push(_ ctx: CGContext, _ block: (CGContext) -> Void) {
         let curr = NSGraphicsContext.current
         defer { NSGraphicsContext.current = curr }

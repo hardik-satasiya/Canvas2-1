@@ -16,7 +16,7 @@ import Cocoa
     @objc optional func canvasView(_ canvasView: CanvasView, didSelect items: [Shape])
     @objc optional func canvasView(_ canvasView: CanvasView, didDeselect items: [Shape])
     // Modification
-    @objc optional func canvasView(_ canvasView: CanvasView, didEdit item: Shape, at indexPath: IndexPath)
+    @objc optional func canvasView(_ canvasView: CanvasView, didEdit item: Shape, indexPath: IndexPath)
     @objc optional func canvasView(_ canvasView: CanvasView, didMove item: Shape)
     @objc optional func canvasView(_ canvasView: CanvasView, didRotate item: Shape)
     // Menu
@@ -25,11 +25,6 @@ import Cocoa
 }
 
 extension CanvasView {
-    
-    public enum ContentSize {
-        case auto
-        case fixed(CGSize)
-    }
 
     @objc public enum PointStyle: Int, CaseIterable {
         case circle
@@ -41,8 +36,8 @@ extension CanvasView {
         case select(CGRect)
         case drawing(Shape)
         
-        case onRotationAnchor(Shape)
-        case movingRotationAnchor(Shape)
+        case onAnchor(Shape)
+        case movingAnchor(Shape)
         
         case onRotator(Shape)
         case movingRotator(Shape)
@@ -52,26 +47,6 @@ extension CanvasView {
         
         case onPoint(Shape, IndexPath)
         case movingPoint(Shape, IndexPath)
-        
-        var onRotator: Bool {
-            guard case .onRotator = self else { return false }
-            return true
-        }
-        
-        var isRotating: Bool {
-            guard case .movingRotator = self else { return false }
-            return true
-        }
-        
-        var onRotationAnchor: Bool {
-            guard case .onRotationAnchor = self else { return false }
-            return true
-        }
-        
-        var isAnchoring: Bool {
-            guard case .movingRotationAnchor = self else { return false }
-            return true
-        }
     }
     
     enum MouseAction {
@@ -82,7 +57,6 @@ extension CanvasView {
     
 }
 
-@IBDesignable
 public final class CanvasView: NSView {
     
     // MARK: - Life Cycle
@@ -101,13 +75,6 @@ public final class CanvasView: NSView {
     
     // MARK: - Settings
     
-    @IBInspectable public var pointImage: NSImage?
-    
-    public var contentSize: ContentSize = .auto {
-        didSet {
-            
-        }
-    }
     public var selectorBorderColor: NSColor = .lightGray
     public var selectorFillColor: NSColor = NSColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5)
     public var strokeColor: NSColor = .black
@@ -150,22 +117,9 @@ public final class CanvasView: NSView {
     private func commonInit() {
     }
     
-    public override func updateTrackingAreas() {
-        trackingAreas.forEach(removeTrackingArea(_:))
-        let area = NSTrackingArea(rect: bounds,
-                                  options: [.activeInKeyWindow, .mouseEnteredAndExited, .mouseMoved],
-                                  owner: self,
-                                  userInfo: nil)
-        addTrackingArea(area)
-    }
-    
     // MARK: - Drawing
     
-    private func refresh(_ newState: State? = nil) {
-        if let newState = newState {
-            state = newState
-        }
-        
+    private func refresh() {
         needsDisplay = true
     }
     
@@ -204,15 +158,21 @@ public final class CanvasView: NSView {
                 if case .onPoint(let mItem, let indexPath) = state, mItem == item {
                     markedIndexPath = indexPath
                 }
-                drawPoints(for: item, highlightedIndexPath: markedIndexPath, in: ctx)
+                drawPoints(for: item, pointStyle: pointStyle, highlightedIndexPath: markedIndexPath, in: ctx)
                 if selectedItems.count == 1 {
                     if isRotationEnabled {
-                        drawRotationAnchor(for: item,
-                                           isHighlighted: state.onRotationAnchor || state.isAnchoring,
-                                           in: ctx)
-                        drawRotator(for: item,
-                                    isHighlighted: state.onRotator || state.isRotating,
-                                    in: ctx)
+                        var highlightAnchor = false
+                        var highlightRotator = false
+                        switch state {
+                        case .onRotator, .movingRotator:
+                            highlightRotator = true
+                        case .onAnchor, .movingAnchor:
+                            highlightAnchor = true
+                        default:
+                            break
+                        }
+                        drawAnchor(for: item, pointStyle: .circle, isHighlighted: highlightAnchor, in: ctx)
+                        drawRotator(for: item, isHighlighted: highlightRotator, in: ctx)
                     }
                 }
             }
@@ -236,8 +196,8 @@ public final class CanvasView: NSView {
         case .idle where isSelectable:
             if isRotationEnabled, let item = onRotatorTest(location) {
                 state = .onRotator(item)
-            } else if isRotationEnabled, let item = onRotationAnchorTest(location) {
-                state = .onRotationAnchor(item)
+            } else if isRotationEnabled, let item = onAnchorTest(location) {
+                state = .onAnchor(item)
             } else if let (item, indexPath) = onPointTest(location) {
                 selectItems([item], byExtendingSelection: false)
                 state = .onPoint(item, indexPath)
@@ -297,11 +257,11 @@ public final class CanvasView: NSView {
             state = .movingRotator(item)
             delegate?.canvasView?(self, didRotate: item)
             
-        case .onRotationAnchor(let item): fallthrough
-        case .movingRotationAnchor(let item):
+        case .onAnchor(let item): fallthrough
+        case .movingAnchor(let item):
             let anchor = anchoringTest(item: item, location: location)
             item.anchor(at: anchor)
-            state = .movingRotationAnchor(item)
+            state = .movingAnchor(item)
             
         case .onPoint(let item, let indexPath): fallthrough
         case .movingPoint(let item, let indexPath):
@@ -311,7 +271,7 @@ public final class CanvasView: NSView {
                 item.update(location, at: indexPath)
             }
             state = .movingPoint(item, indexPath)
-            delegate?.canvasView?(self, didEdit: item, at: indexPath)
+            delegate?.canvasView?(self, didEdit: item, indexPath: indexPath)
             
         case .onItem(let item, let lastLocation): fallthrough
         case .movingItem(let item, let lastLocation):
@@ -343,7 +303,7 @@ public final class CanvasView: NSView {
             }
         case .onRotator, .movingRotator:
             state = .idle
-        case .onRotationAnchor, .movingRotationAnchor:
+        case .onAnchor, .movingAnchor:
             state = .idle
         case .onPoint, .movingPoint:
             state = .idle
@@ -428,11 +388,17 @@ public final class CanvasView: NSView {
     }
     
     public func removeItems(_ itemsToRemove: [Shape]) {
+        let itemsToRemove = itemsToRemove.filter(items.contains)
         for item in itemsToRemove {
             guard let index = items.firstIndex(of: item) else { continue }
             items.remove(at: index).updateHandler = nil
         }
         refresh()
+        
+        let deselecteds = itemsToRemove.filter { $0.isSelected }
+        if !deselecteds.isEmpty {
+            delegate?.canvasView?(self, didDeselect: deselecteds)
+        }
     }
     
     public func selectItems(_ itemsToSelect: [Shape], byExtendingSelection extend: Bool) {
@@ -498,7 +464,7 @@ extension CanvasView {
         ctx.strokePath()
     }
     
-    private func drawPoint(at point: CGPoint, isHighlighted: Bool, rotation: CGFloat, in ctx: CGContext) {
+    private func drawPoint(at point: CGPoint, pointStyle: PointStyle, isHighlighted: Bool, in ctx: CGContext) {
         let len = selectionRange
         let borderColor: CGColor = .black
         let fillColor: CGColor = .white
@@ -516,7 +482,7 @@ extension CanvasView {
         ctx.strokePath()
     }
     
-    private func drawPoints(for item: Shape, highlightedIndexPath: IndexPath? = nil, in ctx: CGContext) {
+    private func drawPoints(for item: Shape, pointStyle: PointStyle, highlightedIndexPath: IndexPath? = nil, in ctx: CGContext) {
         ctx.saveGState()
         defer { ctx.restoreGState() }
         item.layout.forEach { indexPath, point, _ in
@@ -525,17 +491,18 @@ extension CanvasView {
                     return
                 }
             }
-            drawPoint(at: point, isHighlighted: highlightedIndexPath == indexPath, rotation: item.rotationAngle, in: ctx)
+            let highlight = highlightedIndexPath == indexPath
+            drawPoint(at: point, pointStyle: pointStyle, isHighlighted: highlight, in: ctx)
         }
     }
     
-    private func drawRotationAnchor(for item: Shape, isHighlighted: Bool, in ctx: CGContext) {
+    private func drawAnchor(for item: Shape, pointStyle: PointStyle, isHighlighted: Bool, in ctx: CGContext) {
         guard let center = item.rotationCenter else { return }
         
         ctx.saveGState()
         defer { ctx.restoreGState() }
         
-        drawPoint(at: center, isHighlighted: isHighlighted, rotation: 0, in: ctx)
+        drawPoint(at: center, pointStyle: pointStyle, isHighlighted: isHighlighted, in: ctx)
         
         let len = selectionRange
         ctx.addCrosshair(center: center, length: len, angle: 0)
@@ -565,13 +532,13 @@ extension CanvasView {
     }
     
     private func drawAuxTool(for item: Shape, with indexPath: IndexPath, connected: Bool, in ctx: CGContext) {
-        guard item.layout[indexPath.section].count > 1 else { return }
+        guard item[indexPath.section].count > 1 else { return }
         ctx.saveGState()
         defer { ctx.restoreGState() }
         let aIndexPath = IndexPath(item: indexPath.item + (indexPath.item == 0 ? 1 : -1),
                                    section: indexPath.section)
-        let p1 = item.layout[indexPath]
-        let p2 = item.layout[aIndexPath]
+        let p1 = item[indexPath]
+        let p2 = item[aIndexPath]
         let line = Line(from: p1, to: p2)
         let len = line.distance / 2
         let angle = line.angle
@@ -602,7 +569,7 @@ extension CanvasView {
             for magnet in mItem.magnets() where mItem != item {
                 var point: CGPoint
                 switch magnet {
-                case .indexPath(let indexPath): point = mItem.layout[indexPath]
+                case .indexPath(let indexPath): point = mItem[indexPath]
                 case .point(let p):             point = p
                 }
                 point = CGPoint(x: round(point.x), y: round(point.y))
@@ -617,7 +584,7 @@ extension CanvasView {
 
 extension CanvasView {
     
-    private func onRotationAnchorTest(_ location: CGPoint) -> Shape? {
+    private func onAnchorTest(_ location: CGPoint) -> Shape? {
         guard selectedItems.count == 1, let item = selectedItems.first, let center = item.rotationCenter else {
             return nil
         }
@@ -668,7 +635,7 @@ extension CanvasView {
             guard let magnet = mItem.magnet(for: location, range: selectionRange) else { continue }
             let point: CGPoint
             switch magnet {
-            case .indexPath(let indexPath): point = mItem.layout[indexPath]
+            case .indexPath(let indexPath): point = mItem[indexPath]
             case .point(let p):             point = p
             }
             return (mItem, point)

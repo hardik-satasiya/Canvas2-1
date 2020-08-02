@@ -14,7 +14,6 @@ public final class CircleShape: Shape, Magnetizable {
     public private(set) var circle: Circle?
     
     public override var canFinish: Bool { layout.first?.count == 3 }
-    
     public override var finishManually: Bool { false }
     
     public init(circle: Circle) {
@@ -42,10 +41,10 @@ public final class CircleShape: Shape, Magnetizable {
     }
     
     public override func didUpdateLayout() {
+        super.didUpdateLayout()
         if canFinish {
             circle = Circle(layout[0][0], layout[0][1], layout[0][2])
         }
-        super.didUpdateLayout()
     }
     
     public override func updateBody() {

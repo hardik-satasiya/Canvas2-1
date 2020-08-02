@@ -39,7 +39,6 @@ class ViewController: NSViewController {
         canvasView.layer?.borderWidth = 1
         canvasView.layer?.backgroundColor = NSColor.white.cgColor
         canvasView.delegate = self
-        canvasView.contentSize = .fixed(CGSize(width: 100, height: 100))
         
         updateUI()
     }
@@ -81,7 +80,6 @@ class ViewController: NSViewController {
     
     @IBAction func removeButtonAction(_ sender: Any) {
         canvasView.removeSelectedItems()
-        updateUI()
     }
     
     @IBAction func colorWellAction(_ sender: NSColorWell) {
@@ -109,6 +107,8 @@ class ViewController: NSViewController {
     @IBAction func magnetSwitchAction(_ sender: NSButton) {
         canvasView.isMagnetEnabled = sender.state == .on
     }
+    
+    var mouseLocation: CGPoint = .zero
     
 }
 

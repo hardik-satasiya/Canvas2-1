@@ -81,6 +81,9 @@ open class Shape: NSObject, NSCopying, Codable {
         didSet { update() }
     }
     
+    open subscript(_ section: Int) -> [CGPoint] { layout[section] }
+    open subscript(_ indexPath: IndexPath) -> CGPoint { layout[indexPath] }
+    
     open var rotationCenter: CGPoint? {
         guard canFinish else { return nil }
         switch rotationAnchor {
@@ -277,7 +280,7 @@ open class Shape: NSObject, NSCopying, Codable {
         case lineWidth
     }
 
-    public func encode(to encoder: Encoder) throws {
+    open func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         guard isFinished else {
             throw DecodingError.dataCorrupted(
@@ -321,7 +324,7 @@ open class Shape: NSObject, NSCopying, Codable {
     
     // MARK: - NSCopying
     
-    public func copy(with zone: NSZone? = nil) -> Any {
+    open func copy(with zone: NSZone? = nil) -> Any {
         let item = type(of: self).init()
         item.layout = layout
         item.rotationAngle = rotationAngle

@@ -18,7 +18,7 @@ extension CanvasView.PointStyle: CustomStringConvertible {
     }
 }
 
-enum ShapeList: Int, CaseIterable, CustomStringConvertible {
+enum ShapeList: Int, CaseIterable, CustomStringConvertible, ShapeTypeConvertible {
     
     case ruler
     case rect
@@ -26,7 +26,7 @@ enum ShapeList: Int, CaseIterable, CustomStringConvertible {
     case circle
     case goniometer
     
-    func convert() -> Shape.Type {
+    func shapeType() -> Shape.Type {
         switch self {
         case .ruler:        return RulerShape.self
         case .rect:         return RectangleShape.self

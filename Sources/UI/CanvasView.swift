@@ -395,6 +395,10 @@ public final class CanvasView: NSView {
         return true
     }
     
+    public func addItems(_ items: [Shape]) {
+        items.forEach { addItem($0) }
+    }
+    
     public func removeItems(at indexes: IndexSet) {
         let deselecteds = indexes
             .sorted(by: >)

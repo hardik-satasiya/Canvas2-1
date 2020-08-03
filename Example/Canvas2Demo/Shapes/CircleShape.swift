@@ -12,7 +12,7 @@ import Canvas2
 public final class CircleShape: Shape, Magnetizable {
     
     public private(set) var circle: Circle?
-    
+    public override var typeIdentifier: Int { 3 }
     public override var canFinish: Bool { layout.first?.count == 3 }
     public override var finishManually: Bool { false }
     

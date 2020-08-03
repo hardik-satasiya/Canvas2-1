@@ -10,16 +10,21 @@ import Cocoa
 import Canvas2
 
 class ViewController: NSViewController {
+    
+    let loader = ShapeLoader()
 
     @IBOutlet weak var shapeTableView: NSTableView!
-    @IBOutlet weak var pointStyleListButton: NSPopUpButton!
+    // Toolbar
     @IBOutlet weak var removeButton: NSButton!
+    // Canvas
+    @IBOutlet weak var canvasView: CanvasView!
+    // Settings
+    @IBOutlet weak var pointStyleListButton: NSPopUpButton!
     @IBOutlet weak var colorWell: NSColorWell!
-    @IBOutlet weak var closeSwitch: NSButton!
     @IBOutlet weak var selectableSwitch: NSButton!
     @IBOutlet weak var rotationSwitch: NSButton!
     @IBOutlet weak var magnetSwitch: NSButton!
-    @IBOutlet weak var canvasView: CanvasView!
+    @IBOutlet weak var closeSwitch: NSButton!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -40,7 +45,26 @@ class ViewController: NSViewController {
         canvasView.backgroundColor = .white
         canvasView.delegate = self
         
+        loadSavedShapes()
         updateUI()
+    }
+    
+    func showAlert(title: String, message: String, icon: NSImage? = nil) {
+        if let window = view.window {
+            let alert = NSAlert()
+            alert.messageText = title
+            alert.informativeText = message
+            alert.icon = icon
+            alert.beginSheetModal(for: window)
+        }
+    }
+    
+    func loadSavedShapes() {
+        do {
+            canvasView.addItems(try loader.load())
+        } catch {
+            showAlert(title: "Load shapes failed", message: error.localizedDescription, icon: #imageLiteral(resourceName: "Failure"))
+        }
     }
     
     func updateUI() {
@@ -58,19 +82,14 @@ class ViewController: NSViewController {
         }
     }
     
+    // MARK: - UI Actions
+    
     @objc func makeShape(_ sender: NSTableView) {
         guard sender.selectedRow != -1 else { return }
         let shape = ShapeList.allCases[sender.selectedRow]
-        canvasView.startSession(shape.convert())
+        canvasView.startSession(shape.shapeType())
         sender.deselectAll(nil)
         updateUI()
-    }
-
-    @IBAction func pointStyleListButtonAction(_ sender: NSPopUpButton) {
-        guard let st = CanvasView.PointStyle(rawValue: sender.indexOfSelectedItem) else {
-            return
-        }
-        canvasView.pointStyle = st
     }
     
     @IBAction func cursorButtonAction(_ sender: Any) {
@@ -82,18 +101,26 @@ class ViewController: NSViewController {
         canvasView.removeSelectedItems()
     }
     
+    @IBAction func saveButtonAction(_ sender: Any) {
+        do {
+            try loader.save(canvasView.items)
+        } catch {
+            showAlert(title: "Error", message: error.localizedDescription, icon: #imageLiteral(resourceName: "Failure"))
+        }
+    }
+    
+    @IBAction func pointStyleListButtonAction(_ sender: NSPopUpButton) {
+        guard let st = CanvasView.PointStyle(rawValue: sender.indexOfSelectedItem) else {
+            return
+        }
+        canvasView.pointStyle = st
+    }
+    
     @IBAction func colorWellAction(_ sender: NSColorWell) {
         let color = sender.color
         canvasView.strokeColor = color
         canvasView.currentItem?.strokeColor = color
         canvasView.selectedItems.forEach { $0.strokeColor = color }
-    }
-    
-    @IBAction func closeSwitchAction(_ sender: NSButton) {
-        guard let polygon = (canvasView.singleSelection ?? canvasView.currentItem) as? PolygonShape else {
-            return
-        }
-        polygon.isClosed = sender.state == .on
     }
     
     @IBAction func selectableSwitchAction(_ sender: NSButton) {
@@ -108,7 +135,11 @@ class ViewController: NSViewController {
         canvasView.isMagnetEnabled = sender.state == .on
     }
     
-    var mouseLocation: CGPoint = .zero
+    @IBAction func closeSwitchAction(_ sender: NSButton) {
+        guard let polygon = (canvasView.singleSelection ?? canvasView.currentItem) as? PolygonShape
+            else { return }
+        polygon.isClosed = sender.state == .on
+    }
     
 }
 

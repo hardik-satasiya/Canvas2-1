@@ -13,13 +13,35 @@ public final class PolygonShape: Shape, Magnetizable {
     
     public private(set) var lines: [Line] = []
     
-    var isClosed: Bool = true {
+    public var isClosed: Bool = true {
         didSet { update() }
     }
     
+    public override var typeIdentifier: Int { 2 }
     public override var canFinish: Bool {
         let cnt = layout.first?.count ?? 0
         return isClosed ? cnt > 2 : cnt > 1
+    }
+    
+    public required init() {
+        super.init()
+    }
+    
+    public override func encode(to encoder: Encoder) throws {
+        try super.encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        let data = try JSONEncoder().encode(isClosed)
+        try container.encode(data, forKey: .decodeInfo)
+    }
+    
+    public required init(from decoder: Decoder) throws {
+        try super.init(from: decoder)
+    }
+    
+    public override func applyDecodeInfo(_ data: Data) {
+        if let isClosed = try? JSONDecoder().decode(Bool.self, from: data) {
+            self.isClosed = isClosed
+        }
     }
     
     public override func update() {

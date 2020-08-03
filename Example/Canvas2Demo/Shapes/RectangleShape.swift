@@ -20,6 +20,7 @@ public final class RectangleShape: Shape, Magnetizable {
     private var order: [Int] = [0, 1, 2, 3, 7, 4, 5, 6]
     private var controlPoints: [CGPoint] { !canFinish ? [] : order.map { layout[0][$0] } }
     
+    public override var typeIdentifier: Int { 1 }
     public override var supportsAuxTool: Bool { false }
     public override var canFinish: Bool { layout.points.first?.count == order.count }
     public override var finishManually: Bool { false }

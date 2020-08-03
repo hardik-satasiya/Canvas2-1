@@ -62,7 +62,7 @@ extension Shape {
     
 }
 
-open class Shape: NSObject, NSCopying, Codable {
+open class Shape: NSObject, Codable {
     
     open var structure: [Drawable] = []
     open var body: [Drawable] = []
@@ -95,7 +95,12 @@ open class Shape: NSObject, NSCopying, Codable {
         return IndexPath(item: layout[lastSection].count - 1, section: lastSection)
     }
     
+    // MARK: - Encoding / Decoding-related
+    open private(set) var typeIdentifier: Int = -1
+    private var decodeInfo: Data?
+    
     // MARK: - Rules
+    /// Default = -1.
     open var supportsAuxTool: Bool { true }
     open internal(set) var isSelected: Bool = false
     open var canFinish: Bool { true }
@@ -282,13 +287,15 @@ open class Shape: NSObject, NSCopying, Codable {
     
     // MARK: - Codable
     
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case layout
         case rotationAngle
         case rotationAnchor
         case strokeColorData
         case fillColorData
         case lineWidth
+        case typeIdentifier
+        case decodeInfo
     }
 
     open func encode(to encoder: Encoder) throws {
@@ -307,6 +314,7 @@ open class Shape: NSObject, NSCopying, Codable {
         try container.encode(strokeColorData, forKey: .strokeColorData)
         try container.encode(fillColorData, forKey: .fillColorData)
         try container.encode(lineWidth, forKey: .lineWidth)
+        try container.encode(typeIdentifier, forKey: .typeIdentifier)
     }
 
     required public init(from decoder: Decoder) throws {
@@ -327,27 +335,35 @@ open class Shape: NSObject, NSCopying, Codable {
         self.strokeColor = strokeColor
         self.fillColor = fillColor
         lineWidth = try container.decode(CGFloat.self, forKey: .lineWidth)
+        typeIdentifier = try container.decode(Int.self, forKey: .typeIdentifier)
+        decodeInfo = try container.decodeIfPresent(Data.self, forKey: .decodeInfo)
         super.init()
         markAsFinished()
         didUpdateLayout()
         update()
     }
     
-    // MARK: - NSCopying
+    open func applyDecodeInfo(_ data: Data) {
+        
+    }
     
-    open func copy(with zone: NSZone? = nil) -> Any {
-        let item = type(of: self).init()
-        item.layout = layout
-        item.rotationAngle = rotationAngle
-        item.rotationAnchor = rotationAnchor
-        item.strokeColor = strokeColor
-        item.fillColor = fillColor
-        item.lineWidth = lineWidth
-        item.isSelected = isSelected
-        item.isFinished = isFinished
-        didUpdateLayout()
-        item.update()
-        return item
+    func convert(to type: Shape.Type) -> Shape {
+        let shape = type.init()
+        shape.layout = layout
+        shape.rotationAngle = rotationAngle
+        shape.rotationAnchor = rotationAnchor
+        shape.strokeColor = strokeColor
+        shape.fillColor = fillColor
+        shape.lineWidth = lineWidth
+        shape.isSelected = isSelected
+        shape.isFinished = isFinished
+        shape.didUpdateLayout()
+        shape.update()
+        if let decodeInfo = decodeInfo {
+            shape.decodeInfo = decodeInfo
+            shape.applyDecodeInfo(decodeInfo)
+        }
+        return shape
     }
     
 }

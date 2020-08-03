@@ -784,7 +784,7 @@
                                         <rect key="frame" x="141" y="309" width="443" height="141"/>
                                         <subviews>
                                             <stackView distribution="fill" orientation="horizontal" alignment="centerY" spacing="4" horizontalStackHuggingPriority="249.99998474121094" verticalStackHuggingPriority="249.99998474121094" detachesHiddenViews="YES" translatesAutoresizingMaskIntoConstraints="NO" id="umD-xS-sva">
-                                                <rect key="frame" x="0.0" y="109" width="60" height="28"/>
+                                                <rect key="frame" x="0.0" y="109" width="122" height="28"/>
                                                 <subviews>
                                                     <button translatesAutoresizingMaskIntoConstraints="NO" id="U07-vk-rGk">
                                                         <rect key="frame" x="0.0" y="0.0" width="28" height="28"/>
@@ -815,6 +815,18 @@ CA
                                                             <action selector="removeButtonAction:" target="XfG-lQ-9wD" id="Usn-ug-iUd"/>
                                                         </connections>
                                                     </button>
+                                                    <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="vXy-sM-1L3">
+                                                        <rect key="frame" x="58" y="-3" width="70" height="32"/>
+                                                        <buttonCell key="cell" type="push" title="Save" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="y80-Fk-mIY">
+                                                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                                            <font key="font" metaFont="system"/>
+                                                            <string key="keyEquivalent">s</string>
+                                                            <modifierMask key="keyEquivalentModifierMask" command="YES"/>
+                                                        </buttonCell>
+                                                        <connections>
+                                                            <action selector="saveButtonAction:" target="XfG-lQ-9wD" id="h1m-P9-i4h"/>
+                                                        </connections>
+                                                    </button>
                                                 </subviews>
                                                 <constraints>
                                                     <constraint firstAttribute="height" constant="28" id="8NA-gX-elK"/>
@@ -823,8 +835,10 @@ CA
                                                 <visibilityPriorities>
                                                     <integer value="1000"/>
                                                     <integer value="1000"/>
+                                                    <integer value="1000"/>
                                                 </visibilityPriorities>
                                                 <customSpacing>
+                                                    <real value="3.4028234663852886e+38"/>
                                                     <real value="3.4028234663852886e+38"/>
                                                     <real value="3.4028234663852886e+38"/>
                                                 </customSpacing>

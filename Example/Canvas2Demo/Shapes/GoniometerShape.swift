@@ -12,6 +12,7 @@ import Canvas2
 public class GoniometerShape: Shape, Magnetizable {
     
     public private(set) var arc: Arc?
+    public override var typeIdentifier: Int { 4 }
     public override var canFinish: Bool { layout.first?.count == 3 }
     public override var finishManually: Bool { false }
     

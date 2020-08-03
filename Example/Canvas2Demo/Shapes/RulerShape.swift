@@ -13,6 +13,7 @@ public final class RulerShape: Shape, Magnetizable {
     
     private var line: Line?
     
+    public override var typeIdentifier: Int { 0 }
     public override var canFinish: Bool { layout.first?.count == 2 }
     public override var finishManually: Bool { false }
     

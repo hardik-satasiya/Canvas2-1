@@ -47,6 +47,11 @@ extension CanvasView {
         
         case onPoint(Shape, IndexPath)
         case movingPoint(Shape, IndexPath)
+        
+        fileprivate var drawingItem: Shape? {
+            guard case .drawing(let item) = self else { return nil }
+            return item
+        }
     }
     
     enum MouseAction {
@@ -65,16 +70,16 @@ public final class CanvasView: NSView {
     private var mouseAction: MouseAction = .idle
     
     public weak var delegate: CanvasViewDelegate?
+    
     public private(set) var items: [Shape] = []
+    public var currentItem: Shape? { state.drawingItem }
     public var selectedItems: [Shape] { items.reversed().filter { $0.isSelected } }
-    public var currentItem: Shape? {
-        guard case .drawing(let item) = state else { return nil }
-        return item
-    }
     public var singleSelection: Shape? { selectedItems.count == 1 ? selectedItems.first : nil }
+    public var selectionIndexes: IndexSet { IndexSet(selectedItems.compactMap(items.firstIndex(of:))) }
     
     // MARK: - Settings
     
+    public var backgroundColor: NSColor = .clear
     public var selectorBorderColor: NSColor = .lightGray
     public var selectorFillColor: NSColor = NSColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.5)
     public var strokeColor: NSColor = .black
@@ -126,6 +131,9 @@ public final class CanvasView: NSView {
     public override func draw(_ rect: NSRect) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
         
+        ctx.setFillColor(backgroundColor.cgColor)
+        ctx.fill(rect)
+        
         let allItems: [Shape] = {
             guard case .drawing(let item) = state else { return items }
             return items + [item]
@@ -158,7 +166,7 @@ public final class CanvasView: NSView {
                 if case .onPoint(let mItem, let indexPath) = state, mItem == item {
                     markedIndexPath = indexPath
                 }
-                drawPoints(for: item, pointStyle: pointStyle, highlightedIndexPath: markedIndexPath, in: ctx)
+                drawPoints(for: item, pointStyle: pointStyle, rotationAngle: item.rotationAngle, highlightedIndexPath: markedIndexPath, in: ctx)
                 if selectedItems.count == 1 {
                     if isRotationEnabled {
                         var highlightAnchor = false
@@ -171,7 +179,7 @@ public final class CanvasView: NSView {
                         default:
                             break
                         }
-                        drawAnchor(for: item, pointStyle: .circle, isHighlighted: highlightAnchor, in: ctx)
+                        drawAnchor(for: item, pointStyle: .circle, rotationAngle: item.rotationAngle, isHighlighted: highlightAnchor, in: ctx)
                         drawRotator(for: item, isHighlighted: highlightRotator, in: ctx)
                     }
                 }
@@ -375,7 +383,7 @@ public final class CanvasView: NSView {
         state = .drawing(item)
     }
     
-    // MARK: - Methods
+    // MARK: - Add / Remove
     
     @discardableResult
     public func addItem(_ item: Shape) -> Bool {
@@ -387,54 +395,21 @@ public final class CanvasView: NSView {
         return true
     }
     
-    public func removeItems(_ itemsToRemove: [Shape]) {
-        let itemsToRemove = itemsToRemove.filter(items.contains)
-        for item in itemsToRemove {
-            guard let index = items.firstIndex(of: item) else { continue }
-            items.remove(at: index).updateHandler = nil
-        }
+    public func removeItems(at indexes: IndexSet) {
+        let deselecteds = indexes
+            .sorted(by: >)
+            .map { items.remove(at: $0) }
+        
         refresh()
         
-        let deselecteds = itemsToRemove.filter { $0.isSelected }
         if !deselecteds.isEmpty {
-            delegate?.canvasView?(self, didDeselect: deselecteds)
+            delegate?.canvasView?(self, didDeselect: deselecteds.reversed())
         }
     }
     
-    public func selectItems(_ itemsToSelect: [Shape], byExtendingSelection extend: Bool) {
-        let itemsToSelect = itemsToSelect.filter(items.contains)
-        let newSelection = extend ? Set(itemsToSelect + selectedItems) : Set(itemsToSelect)
-        let bye = Set(selectedItems).subtracting(newSelection)
-        let new = Set(newSelection).subtracting(selectedItems)
-        
-        for item in items {
-            item.isSelected = newSelection.contains(item)
-        }
-        
-        if !bye.isEmpty {
-            delegate?.canvasView?(self, didDeselect: Array(bye))
-        }
-        
-        if !new.isEmpty {
-            delegate?.canvasView?(self, didSelect: Array(new))
-        }
-        
-        refresh()
-    }
-    
-    // MARK: -
-    
-    public func selectItems(with rect: CGRect) {
-        selectItems(items.filter({ $0.selectTest(rect) }),
-                    byExtendingSelection: false)
-    }
-    
-    public func selectAllItems() {
-        selectItems(items, byExtendingSelection: false)
-    }
-    
-    public func deselectAllItems() {
-        selectItems([], byExtendingSelection: false)
+    public func removeItems(_ itemsToRemove: [Shape]) {
+        let indexes = IndexSet(itemsToRemove.compactMap(items.firstIndex(of:)))
+        removeItems(at: indexes)
     }
     
     public func removeSelectedItems() {
@@ -443,6 +418,53 @@ public final class CanvasView: NSView {
     
     public func removeAllItems() {
         removeItems(items)
+    }
+    
+    // MARK:: - Selection
+    
+    public func selectItems(at indexes: IndexSet, byExtendingSelection ext: Bool) {
+        let curIndexes = Set(selectionIndexes)
+        let newIndexes = ext ? curIndexes.union(indexes) : Set(indexes)
+        let new = newIndexes.subtracting(curIndexes)
+        let bye = curIndexes.subtracting(newIndexes)
+        for (i, item) in items.enumerated() {
+            item.isSelected = newIndexes.contains(i)
+        }
+        refresh()
+        if !new.isEmpty {
+            delegate?.canvasView?(self, didSelect: new.map({ items[$0] }))
+        }
+        if !bye.isEmpty {
+            delegate?.canvasView?(self, didDeselect: bye.map({ items[$0] }))
+        }
+    }
+    
+    public func selectItems(_ itemsToSelect: [Shape], byExtendingSelection ext: Bool) {
+        let indexes = IndexSet(itemsToSelect.compactMap(items.firstIndex(of:)))
+        selectItems(at: indexes, byExtendingSelection: ext)
+    }
+    
+    public func selectItems(with rect: CGRect) {
+        let itemsToSelect = items.filter({ $0.selectTest(rect) })
+        selectItems(itemsToSelect, byExtendingSelection: false)
+    }
+    
+    public func selectAllItems() {
+        selectItems(items, byExtendingSelection: false)
+    }
+    
+    public func deselectItems(at indexes: IndexSet) {
+        let indexes = selectionIndexes.subtracting(indexes)
+        selectItems(at: indexes, byExtendingSelection: false)
+    }
+    
+    public func deselectItems(_ itemsToDeselect: [Shape]) {
+        let indexes = IndexSet(itemsToDeselect.compactMap(items.firstIndex(of:)))
+        deselectItems(at: indexes)
+    }
+    
+    public func deselectAllItems() {
+        selectItems([], byExtendingSelection: false)
     }
     
 }
@@ -464,25 +486,25 @@ extension CanvasView {
         ctx.strokePath()
     }
     
-    private func drawPoint(at point: CGPoint, pointStyle: PointStyle, isHighlighted: Bool, in ctx: CGContext) {
+    private func drawPoint(at point: CGPoint, pointStyle: PointStyle, rotationAngle: CGFloat, isHighlighted: Bool, in ctx: CGContext) {
         let len = selectionRange
         let borderColor: CGColor = .black
         let fillColor: CGColor = .white
         // Background
         pointStyle == .circle
             ? ctx.addCircle(Circle(center: point, radius: len))
-            : ctx.addSquare(center: point, width: len)
+            : ctx.addSquare(center: point, width: len, rotation: rotationAngle)
         ctx.setFillColor(isHighlighted ? highlightedColor.cgColor : fillColor)
         ctx.fillPath()
         // Border
         pointStyle == .circle
             ? ctx.addCircle(Circle(center: point, radius: len))
-            : ctx.addSquare(center: point, width: len)
+            : ctx.addSquare(center: point, width: len, rotation: rotationAngle)
         ctx.setStrokeColor(borderColor)
         ctx.strokePath()
     }
     
-    private func drawPoints(for item: Shape, pointStyle: PointStyle, highlightedIndexPath: IndexPath? = nil, in ctx: CGContext) {
+    private func drawPoints(for item: Shape, pointStyle: PointStyle, rotationAngle: CGFloat, highlightedIndexPath: IndexPath? = nil, in ctx: CGContext) {
         ctx.saveGState()
         defer { ctx.restoreGState() }
         item.layout.forEach { indexPath, point, _ in
@@ -492,17 +514,17 @@ extension CanvasView {
                 }
             }
             let highlight = highlightedIndexPath == indexPath
-            drawPoint(at: point, pointStyle: pointStyle, isHighlighted: highlight, in: ctx)
+            drawPoint(at: point, pointStyle: pointStyle, rotationAngle: rotationAngle, isHighlighted: highlight, in: ctx)
         }
     }
     
-    private func drawAnchor(for item: Shape, pointStyle: PointStyle, isHighlighted: Bool, in ctx: CGContext) {
+    private func drawAnchor(for item: Shape, pointStyle: PointStyle, rotationAngle: CGFloat, isHighlighted: Bool, in ctx: CGContext) {
         guard let center = item.rotationCenter else { return }
         
         ctx.saveGState()
         defer { ctx.restoreGState() }
         
-        drawPoint(at: center, pointStyle: pointStyle, isHighlighted: isHighlighted, in: ctx)
+        drawPoint(at: center, pointStyle: pointStyle, rotationAngle: rotationAngle, isHighlighted: isHighlighted, in: ctx)
         
         let len = selectionRange
         ctx.addCrosshair(center: center, length: len, angle: 0)

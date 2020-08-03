@@ -37,7 +37,7 @@ class ViewController: NSViewController {
         canvasView.wantsLayer = true
         canvasView.layer?.cornerRadius = 4
         canvasView.layer?.borderWidth = 1
-        canvasView.layer?.backgroundColor = NSColor.white.cgColor
+        canvasView.backgroundColor = .white
         canvasView.delegate = self
         
         updateUI()
@@ -115,6 +115,10 @@ class ViewController: NSViewController {
 extension ViewController: CanvasViewDelegate {
     
     func canvasView(_ canvasView: CanvasView, didFinishSession item: Shape) {
+        updateUI()
+    }
+    
+    func canvasViewDidCancelSession(_ canvasView: CanvasView) {
         updateUI()
     }
     

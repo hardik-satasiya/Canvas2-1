@@ -13,7 +13,7 @@ public func degreesToRadians(_ d: CGFloat) -> CGFloat { d * .pi / 180 }
 
 // MARK: -
 
-public protocol Drawable: Codable {
+public protocol Drawable {
     func draw(in ctx: CGContext)
 }
 
@@ -30,34 +30,27 @@ extension Array where Element == CGPathProvider {
     }
 }
 
-public enum Magnet {
-    case indexPath(IndexPath)
-    case point(CGPoint)
-}
+// MARK: - Magnetizable
 
 public protocol Magnetizable: Shape {
-    func magnets() -> [Magnet]
-    func magnet(for point: CGPoint, range: CGFloat) -> Magnet?
+    func magnets() -> [Shape.PointDescriptor]
+    func magnet(for point: CGPoint, range: CGFloat) -> Shape.PointDescriptor?
 }
 
 extension Magnetizable {
     
-    public func magnets() -> [Magnet] {
-        var magnets: [Magnet] = []
+    public func magnets() -> [Shape.PointDescriptor] {
+        var magnets: [Shape.PointDescriptor] = []
         layout.forEach { (indexPath, _, _) in
-            magnets += [.indexPath(indexPath)]
+            magnets += [.indexPath(item: indexPath.item, section: indexPath.section)]
         }
         return magnets
     }
     
-    public func magnet(for location: CGPoint, range: CGFloat) -> Magnet? {
+    public func magnet(for location: CGPoint, range: CGFloat) -> Shape.PointDescriptor? {
         guard canFinish else { return nil }
         return magnets().first { magnet in
-            let point: CGPoint
-            switch magnet {
-            case .indexPath(let indexPath): point = layout[indexPath]
-            case .point(let p):             point = p
-            }
+            let point: CGPoint = getPoint(with: magnet)
             return point.contains(location, in: range)
         }
     }

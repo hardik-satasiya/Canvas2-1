@@ -7,7 +7,7 @@
 
 import AppKit
 
-public class ShapeText: Drawable {
+public class ShapeText: Drawable, Codable {
     
     public var string: NSAttributedString
     public var point: CGPoint

@@ -9,35 +9,23 @@
 import Cocoa
 
 extension Shape {
-    
-    public struct PointRelation {
-        public var indexPath: IndexPath
-        public var x: CGFloat
-        public var y: CGFloat
-        
-        public init(indexPath: IndexPath, x: CGFloat, y: CGFloat) {
-            self.indexPath = indexPath
-            self.x = x
-            self.y = y
-        }
-    }
-    
-    public enum Anchor: Codable {
-        case indexPath(IndexPath)
-        case point(CGPoint)
+
+    public enum PointDescriptor: Codable {
+        case indexPath(item: Int, section: Int)
+        case fixed(x: CGFloat, y: CGFloat)
         
         enum CodingKeys: String, CodingKey {
             case indexPath
-            case point
+            case fixed
         }
         
         public func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             switch self {
-            case .indexPath(let indexPath):
-                try container.encode(indexPath, forKey: .indexPath)
-            case .point(let point):
-                try container.encode(point, forKey: .point)
+            case .indexPath(let item, let section):
+                try container.encode(IndexPath(item: item, section: section), forKey: .indexPath)
+            case .fixed(let x, let y):
+                try container.encode(CGPoint(x: x, y: y), forKey: .fixed)
             }
         }
         
@@ -52,11 +40,23 @@ extension Shape {
             switch key {
             case .indexPath:
                 let indexPath = try container.decode(IndexPath.self, forKey: key)
-                self = .indexPath(indexPath)
-            case .point:
+                self = .indexPath(item: indexPath.item, section: indexPath.section)
+            case .fixed:
                 let point = try container.decode(CGPoint.self, forKey: key)
-                self = .point(point)
+                self = .fixed(x: point.x, y: point.y)
             }
+        }
+    }
+    
+    public struct PointRelation {
+        public var indexPath: IndexPath
+        public var x: CGFloat
+        public var y: CGFloat
+        
+        public init(indexPath: IndexPath, x: CGFloat, y: CGFloat) {
+            self.indexPath = indexPath
+            self.x = x
+            self.y = y
         }
     }
     
@@ -70,7 +70,7 @@ open class Shape: NSObject, NSCopying, Codable {
     
     open private(set) var layout = Layout()
     open private(set) var rotationAngle: CGFloat = 0
-    open private(set) var rotationAnchor: Anchor = .indexPath(IndexPath(item: 0, section: 0))
+    open private(set) var rotationAnchor: PointDescriptor = .indexPath(item: 0, section: 0)
     open var strokeColor: NSColor = .black {
         didSet { update() }
     }
@@ -86,10 +86,7 @@ open class Shape: NSObject, NSCopying, Codable {
     
     open var rotationCenter: CGPoint? {
         guard canFinish else { return nil }
-        switch rotationAnchor {
-        case .indexPath(let indexPath): return layout[indexPath]
-        case .point(let point): return point
-        }
+        return getPoint(with: rotationAnchor)
     }
     
     open var endIndexPath: IndexPath? {
@@ -113,6 +110,13 @@ open class Shape: NSObject, NSCopying, Codable {
     }
     
     // MARK: - Main Methods
+    
+    open func getPoint(with descriptor: PointDescriptor) -> CGPoint {
+        switch descriptor {
+        case let .indexPath(item, section): return self[IndexPath(item: item, section: section)]
+        case let .fixed(x, y):              return CGPoint(x: x, y: y)
+        }
+    }
     
     open func pointRelations() -> [IndexPath: [PointRelation]] { [:] }
     
@@ -154,6 +158,13 @@ open class Shape: NSObject, NSCopying, Codable {
         update()
     }
     
+    open func push(toNextSection point: CGPoint) {
+        guard !isFinished else { return }
+        layout.pushToNextSection(point)
+        didUpdateLayout()
+        update()
+    }
+    
     open func update(_ point: CGPoint, at indexPath: IndexPath) {
         let oldPoint = layout[indexPath]
         layout[indexPath] = point
@@ -182,8 +193,8 @@ open class Shape: NSObject, NSCopying, Codable {
     
     open func translate(_ offset: Offset) {
         guard canFinish else { return }
-        if case .point(let point) = rotationAnchor {
-            rotationAnchor = .point(CGPoint(x: point.x + offset.x, y: point.y + offset.y))
+        if case .fixed(let x, let y) = rotationAnchor {
+            rotationAnchor = .fixed(x: x + offset.x, y: y + offset.y)
         }
         for (i, points) in layout.enumerated() {
             for (j, point) in points.enumerated() {
@@ -196,21 +207,21 @@ open class Shape: NSObject, NSCopying, Codable {
         update()
     }
     
-    open func scale(x: CGFloat, y: CGFloat) {
-        if case .point(let center) = rotationAnchor {
-            anchor(at: Anchor.point(CGPoint(x: center.x * x, y: center.y * y)))
+    open func scale(x sx: CGFloat, y sy: CGFloat) {
+        if case .fixed(let x, let y) = rotationAnchor {
+            anchor(at: .fixed(x: x * sx, y: y * sy))
         }
         layout.forEach { indexPath, point, _ in
             var newPoint = point
-            newPoint.x *= x
-            newPoint.y *= x
+            newPoint.x *= sx
+            newPoint.y *= sy
             layout[indexPath] = newPoint
         }
         didUpdateLayout()
         update()
     }
     
-    open func anchor(at anchor: Anchor) {
+    open func anchor(at anchor: PointDescriptor) {
         guard canFinish else { return }
         rotationAnchor = anchor
     }
@@ -312,7 +323,7 @@ open class Shape: NSObject, NSCopying, Codable {
         }
         layout = try container.decode(Layout.self, forKey: .layout)
         rotationAngle = try container.decode(CGFloat.self, forKey: .rotationAngle)
-        rotationAnchor = try container.decode(Anchor.self, forKey: .rotationAnchor)
+        rotationAnchor = try container.decode(PointDescriptor.self, forKey: .rotationAnchor)
         self.strokeColor = strokeColor
         self.fillColor = fillColor
         lineWidth = try container.decode(CGFloat.self, forKey: .lineWidth)

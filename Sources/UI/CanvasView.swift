@@ -202,14 +202,14 @@ public final class CanvasView: NSView {
         
         switch state {
         case .idle where isSelectable:
-            if isRotationEnabled, let item = onRotatorTest(location) {
+            if isRotationEnabled, let item = onRotatorTest(at: location) {
                 state = .onRotator(item)
-            } else if isRotationEnabled, let item = onAnchorTest(location) {
+            } else if isRotationEnabled, let item = onAnchorTest(at: location) {
                 state = .onAnchor(item)
-            } else if let (item, indexPath) = onPointTest(location) {
+            } else if let (item, indexPath) = onPointTest(at: location) {
                 selectItems([item], byExtendingSelection: false)
                 state = .onPoint(item, indexPath)
-            } else if let item = onItemTest(location) {
+            } else if let item = onItemTest(at: location) {
                 if !selectedItems.contains(item) {
                     selectItems([item], byExtendingSelection: false)
                 }
@@ -339,7 +339,7 @@ public final class CanvasView: NSView {
         super.rightMouseDown(with: event)
         let location = convert(event.locationInWindow, from: nil)
         var menu: NSMenu?
-        if let item = onItemTest(location) {
+        if let item = onItemTest(at: location) {
             menu = delegate?.canvasView?(self, menuFor: item)
         } else {
             menu = delegate?.menu?(for: self)
@@ -509,7 +509,9 @@ extension CanvasView {
         defer { ctx.restoreGState() }
         item.layout.forEach { indexPath, point, _ in
             if isRotationEnabled, selectedItems.count == 1 {
-                if case .indexPath(let anchorIndexPath) = item.rotationAnchor, anchorIndexPath == indexPath {
+                if case .indexPath(let item, let section) = item.rotationAnchor,
+                    IndexPath(item: item, section: section) == indexPath
+                {
                     return
                 }
             }
@@ -589,11 +591,7 @@ extension CanvasView {
     private func drawMagnetPoints(for item: Shape, in ctx: CGContext) {
         for mItem in items.compactMap({ $0 as? Magnetizable }) {
             for magnet in mItem.magnets() where mItem != item {
-                var point: CGPoint
-                switch magnet {
-                case .indexPath(let indexPath): point = mItem[indexPath]
-                case .point(let p):             point = p
-                }
+                var point: CGPoint = mItem.getPoint(with: magnet)
                 point = CGPoint(x: round(point.x), y: round(point.y))
                 drawMagnetPoint(at: point, in: ctx)
             }
@@ -606,27 +604,27 @@ extension CanvasView {
 
 extension CanvasView {
     
-    private func onAnchorTest(_ location: CGPoint) -> Shape? {
+    private func onAnchorTest(at location: CGPoint) -> Shape? {
         guard selectedItems.count == 1, let item = selectedItems.first, let center = item.rotationCenter else {
             return nil
         }
         return center.contains(location, in: selectionRange) ? item : nil
     }
     
-    private func anchoringTest(item: Shape, location: CGPoint) -> Shape.Anchor {
-        var anchor: Shape.Anchor?
+    private func anchoringTest(item: Shape, location: CGPoint) -> Shape.PointDescriptor {
+        var anchor: Shape.PointDescriptor?
         item.layout.forEach { (indexPath, point, stop) in
             guard point.contains(location, in: selectionRange) else { return }
-            anchor = .indexPath(indexPath)
+            anchor = .indexPath(item: indexPath.item, section: indexPath.section)
             stop = true
         }
         if anchor == nil {
-            anchor = .point(location)
+            anchor = .fixed(x: location.x, y: location.y)
         }
         return anchor!
     }
     
-    private func onRotatorTest(_ location: CGPoint) -> Shape? {
+    private func onRotatorTest(at location: CGPoint) -> Shape? {
         guard selectedItems.count == 1, let item = selectedItems.first else { return nil }
         guard let center = item.rotationCenter else { return nil }
         let line = Line(from: center, to: location)
@@ -638,7 +636,7 @@ extension CanvasView {
         return arc.contains(location) ? item : nil
     }
     
-    private func onPointTest(_ location: CGPoint) -> (Shape, IndexPath)? {
+    private func onPointTest(at location: CGPoint) -> (Shape, IndexPath)? {
         for item in selectedItems {
             if let indexPath = item.hitTest(location, pointRange: selectionRange) {
                 return (item, indexPath)
@@ -648,18 +646,14 @@ extension CanvasView {
         return nil
     }
     
-    private func onItemTest(_ location: CGPoint) -> Shape? {
+    private func onItemTest(at location: CGPoint) -> Shape? {
         items.reversed().first { $0.hitTest(location, bodyRange: selectionRange) }
     }
     
     private func magnetTest(item: Shape, at location: CGPoint) -> (Shape, CGPoint)? {
         for mItem in items.compactMap({ $0 as? Magnetizable }) where mItem != item {
             guard let magnet = mItem.magnet(for: location, range: selectionRange) else { continue }
-            let point: CGPoint
-            switch magnet {
-            case .indexPath(let indexPath): point = mItem[indexPath]
-            case .point(let p):             point = p
-            }
+            let point: CGPoint = mItem.getPoint(with: magnet)
             return (mItem, point)
         }
         return nil

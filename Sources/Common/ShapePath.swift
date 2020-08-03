@@ -7,7 +7,7 @@
 
 import AppKit
 
-public class ShapePath: Drawable, CGPathProvider {
+public class ShapePath: Drawable, CGPathProvider, Codable {
     public enum Method: Equatable {
         case stroke(CGFloat)
         case dash(CGFloat, CGFloat, [CGFloat])

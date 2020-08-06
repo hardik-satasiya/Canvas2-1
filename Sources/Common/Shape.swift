@@ -103,6 +103,7 @@ open class Shape: NSObject, Codable {
     /// Default = -1.
     open var supportsAuxTool: Bool { true }
     open internal(set) var isSelected: Bool = false
+    open var pushContinuously: Bool { false }
     open var canFinish: Bool { true }
     open var finishManually: Bool { true }
     open private(set) var isFinished: Bool = false
@@ -156,16 +157,13 @@ open class Shape: NSObject, Codable {
         
     }
     
-    open func push(_ point: CGPoint) {
+    open func push(_ point: CGPoint, toNextSection: Bool = false) {
         guard !isFinished else { return }
-        layout.push(point)
-        didUpdateLayout()
-        update()
-    }
-    
-    open func push(toNextSection point: CGPoint) {
-        guard !isFinished else { return }
-        layout.pushToNextSection(point)
+        if toNextSection {
+            layout.pushToNextSection(point)
+        } else {
+            layout.push(point)
+        }
         didUpdateLayout()
         update()
     }

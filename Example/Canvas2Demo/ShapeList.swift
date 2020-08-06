@@ -25,6 +25,7 @@ enum ShapeList: Int, CaseIterable, CustomStringConvertible, ShapeTypeConvertible
     case polygon
     case circle
     case goniometer
+    case pencil
     
     func shapeType() -> Shape.Type {
         switch self {
@@ -33,6 +34,7 @@ enum ShapeList: Int, CaseIterable, CustomStringConvertible, ShapeTypeConvertible
         case .circle:       return CircleShape.self
         case .polygon:      return PolygonShape.self
         case .goniometer:   return GoniometerShape.self
+        case .pencil:       return Pencil.self
         }
     }
     
@@ -43,6 +45,7 @@ enum ShapeList: Int, CaseIterable, CustomStringConvertible, ShapeTypeConvertible
         case .polygon:      return "Polygon"
         case .circle:       return "Circle"
         case .goniometer:   return "Goniometer"
+        case .pencil:       return "Pencil"
         }
     }
     

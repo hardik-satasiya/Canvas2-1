@@ -32,7 +32,7 @@ public class GoniometerShape: Shape, Magnetizable {
         try super.init(from: decoder)
     }
     
-    public override func push(_ point: CGPoint) {
+    public override func push(_ point: CGPoint, toNextSection: Bool = false) {
         guard !canFinish else { return }
         super.push(point)
     }

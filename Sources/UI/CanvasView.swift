@@ -162,11 +162,20 @@ public final class CanvasView: NSView {
             }
         default:
             for item in selectedItems {
-                var markedIndexPath: IndexPath?
-                if case .onPoint(let mItem, let indexPath) = state, mItem == item {
-                    markedIndexPath = indexPath
+                if !item.pushContinuously {
+                    var markedIndexPath: IndexPath?
+                    if case .onPoint(let mItem, let indexPath) = state, mItem == item {
+                        markedIndexPath = indexPath
+                    }
+                    drawPoints(for: item,
+                               pointStyle: pointStyle,
+                               rotationAngle: item.rotationAngle,
+                               highlightedIndexPath: markedIndexPath,
+                               in: ctx)
+                } else {
+                    drawBoundingBox(for: item, in: ctx)
                 }
-                drawPoints(for: item, pointStyle: pointStyle, rotationAngle: item.rotationAngle, highlightedIndexPath: markedIndexPath, in: ctx)
+                
                 if selectedItems.count == 1 {
                     if isRotationEnabled {
                         var highlightAnchor = false
@@ -221,13 +230,17 @@ public final class CanvasView: NSView {
                 state = .select(rect)
             }
         case .drawing(let item):
-            if isMagnetEnabled, let (_, magnetPoint) = magnetTest(item: item, at: location) {
-                item.push(magnetPoint)
+            if item.pushContinuously {
+                item.push(location, toNextSection: true)
             } else {
-                item.push(location)
-            }
-            if item.layout.last?.count == 1 {
-                item.push(location)
+                if isMagnetEnabled, let (_, magnetPoint) = magnetTest(item: item, at: location) {
+                    item.push(magnetPoint)
+                } else {
+                    item.push(location)
+                }
+                if item.layout.last?.count == 1 {
+                    item.push(location)
+                }
             }
         default:
             break
@@ -251,10 +264,14 @@ public final class CanvasView: NSView {
             selectItems(with: rect)
             state = .select(rect)
         case .drawing(let item):
-            if isMagnetEnabled, let (_, magnetPoint) = magnetTest(item: item, at: location) {
-                item.updateLast(magnetPoint)
+            if item.pushContinuously {
+                item.push(location)
             } else {
-                item.updateLast(location)
+                if isMagnetEnabled, let (_, magnetPoint) = magnetTest(item: item, at: location) {
+                    item.updateLast(magnetPoint)
+                } else {
+                    item.updateLast(location)
+                }
             }
             
         case .onRotator(let item): fallthrough
@@ -524,14 +541,29 @@ extension CanvasView {
         }
     }
     
-    private func drawAnchor(for item: Shape, pointStyle: PointStyle, rotationAngle: CGFloat, isHighlighted: Bool, in ctx: CGContext) {
-        guard let center = item.rotationCenter else { return }
+    private func drawBoundingBox(for item: Shape, in ctx: CGContext) {
+        guard var boundingBox = item.bodyPath?.boundingBoxOfPath else { return }
+        boundingBox = boundingBox.insetBy(dx: -selectionRange, dy: -selectionRange)
+        boundingBox.origin = CGPoint(x: round(boundingBox.origin.x) + 0.5,
+                                     y: round(boundingBox.origin.y) + 0.5)
+        boundingBox.size = CGSize(width: round(boundingBox.width),
+                                  height: round(boundingBox.height))
         
         ctx.saveGState()
         defer { ctx.restoreGState() }
         
+        let path = NSBezierPath(roundedRect: boundingBox, xRadius: selectionRange, yRadius: selectionRange)
+        var pattern: [CGFloat] = [2, 2]
+        path.setLineDash(&pattern, count: pattern.count, phase: 2)
+        highlightedColor.setStroke()
+        path.stroke()
+    }
+    
+    private func drawAnchor(for item: Shape, pointStyle: PointStyle, rotationAngle: CGFloat, isHighlighted: Bool, in ctx: CGContext) {
+        guard let center = item.rotationCenter else { return }
+        ctx.saveGState()
+        defer { ctx.restoreGState() }
         drawPoint(at: center, pointStyle: pointStyle, rotationAngle: rotationAngle, isHighlighted: isHighlighted, in: ctx)
-        
         let len = selectionRange
         ctx.addCrosshair(center: center, length: len, angle: 0)
         ctx.setStrokeColor(.black)
@@ -641,7 +673,7 @@ extension CanvasView {
     }
     
     private func onPointTest(at location: CGPoint) -> (Shape, IndexPath)? {
-        for item in selectedItems {
+        for item in selectedItems where !item.pushContinuously {
             if let indexPath = item.hitTest(location, pointRange: selectionRange) {
                 return (item, indexPath)
                 

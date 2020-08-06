@@ -39,7 +39,7 @@ public final class RectangleShape: Shape, Magnetizable {
         try super.init(from: decoder)
     }
     
-    public override func push(_ point: CGPoint) {
+    public override func push(_ point: CGPoint, toNextSection: Bool = false) {
         guard let firstSection = layout.first else {
             super.push(point)
             return

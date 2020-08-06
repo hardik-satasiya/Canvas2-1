@@ -20,6 +20,7 @@
 		85AE354824D3B8F100FB03D2 /* PolygonShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AE354324D3B8F100FB03D2 /* PolygonShape.swift */; };
 		85AE354924D3B8F100FB03D2 /* RectangleShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AE354424D3B8F100FB03D2 /* RectangleShape.swift */; };
 		85AE354A24D3B8F100FB03D2 /* RulerShape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AE354524D3B8F100FB03D2 /* RulerShape.swift */; };
+		85B5697524DAB0610025EB8A /* Pencil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85B5697424DAB0610025EB8A /* Pencil.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +70,7 @@
 		85AE354324D3B8F100FB03D2 /* PolygonShape.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PolygonShape.swift; sourceTree = "<group>"; };
 		85AE354424D3B8F100FB03D2 /* RectangleShape.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RectangleShape.swift; sourceTree = "<group>"; };
 		85AE354524D3B8F100FB03D2 /* RulerShape.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RulerShape.swift; sourceTree = "<group>"; };
+		85B5697424DAB0610025EB8A /* Pencil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pencil.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +143,7 @@
 				85AE354324D3B8F100FB03D2 /* PolygonShape.swift */,
 				85AE354224D3B8F100FB03D2 /* CircleShape.swift */,
 				85AE354124D3B8F100FB03D2 /* GoniometerShape.swift */,
+				85B5697424DAB0610025EB8A /* Pencil.swift */,
 			);
 			path = Shapes;
 			sourceTree = "<group>";
@@ -245,6 +248,7 @@
 				85AE354824D3B8F100FB03D2 /* PolygonShape.swift in Sources */,
 				855F2F7F24DA8B1E00967CD5 /* ShapeLoader.swift in Sources */,
 				85AE353F24D3B8B200FB03D2 /* ShapeList.swift in Sources */,
+				85B5697524DAB0610025EB8A /* Pencil.swift in Sources */,
 				85AE351E24D3B59200FB03D2 /* ViewController.swift in Sources */,
 				85AE351C24D3B59200FB03D2 /* AppDelegate.swift in Sources */,
 				85AE354924D3B8F100FB03D2 /* RectangleShape.swift in Sources */,

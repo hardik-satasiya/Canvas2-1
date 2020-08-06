@@ -24,7 +24,7 @@ public final class CircleShape: Shape, Magnetizable {
             center.extended(length: radius, angle: 0),
             center.extended(length: radius, angle: .pi / 2),
             center.extended(length: radius, angle: .pi)
-        ].forEach(push(_:))
+        ].forEach { push($0) }
     }
     
     public required init() {
@@ -35,7 +35,7 @@ public final class CircleShape: Shape, Magnetizable {
         try super.init(from: decoder)
     }
     
-    public override func push(_ point: CGPoint) {
+    public override func push(_ point: CGPoint, toNextSection: Bool = false) {
         guard !canFinish else { return }
         super.push(point)
     }

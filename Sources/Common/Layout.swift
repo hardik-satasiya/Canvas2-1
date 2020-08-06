@@ -54,9 +54,10 @@ public struct Layout: Codable, Sequence, IteratorProtocol {
     
     public mutating func pushToNextSection(_ point: CGPoint) {
         if !points.isEmpty {
-            points += []
+            points.append([point])
+        } else {
+            push(point)
         }
-        push(point)
     }
     
     @discardableResult

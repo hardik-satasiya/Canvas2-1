@@ -9,6 +9,7 @@
 import Cocoa
 
 @objc public protocol CanvasViewDelegate: AnyObject {
+    @objc optional func canvasView(_ canvasView: CanvasView, items: [Shape], in selector: CGRect)
     // Drawing Session
     @objc optional func canvasView(_ canvasView: CanvasView, didFinishSession item: Shape)
     @objc optional func canvasViewDidCancelSession(_ canvasView: CanvasView)
@@ -257,10 +258,10 @@ public final class CanvasView: NSView {
         mouseAction = .drag
         
         switch state {
-        case .select(var rect):
+        case .select(let rect):
             let line = Line(from: rect.origin, to: location)
             let size = CGSize(width: round(line.dx), height: round(line.dy))
-            rect.size = size
+            let rect = CGRect(origin: rect.origin, size: size)
             selectItems(with: rect)
             state = .select(rect)
         case .drawing(let item):
@@ -320,8 +321,12 @@ public final class CanvasView: NSView {
         mouseAction = .idle
         
         switch state {
-        case .select:
+        case .select(let rect):
+            let selector = CGRect(x: rect.minX, y: rect.minY,
+                                  width: abs(rect.width),
+                                  height: abs(rect.height))
             state = .idle
+            delegate?.canvasView?(self, items: selectedItems, in: selector)
         case .drawing(let item):
             if !item.finishManually && item.canFinish {
                 finishSession()
